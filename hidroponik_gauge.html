@@ -1,0 +1,818 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sistem Monitoring Hidroponik Tower IoT</title>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --green-deep: #0d3320;
+    --green-dark: #1a5c38;
+    --green-mid: #2d8653;
+    --green-bright: #3dbb72;
+    --green-light: #7dd9a3;
+    --green-pale: #c8f5dc;
+    --green-mist: #eafaf1;
+    --accent-gold: #f5c842;
+    --accent-teal: #1dd4b0;
+    --accent-red: #ff5f5f;
+    --text-dark: #0d2018;
+    --text-mid: #2d5a3d;
+    --text-light: #fff;
+    --card-bg: rgba(255,255,255,0.92);
+    --shadow: 0 8px 32px rgba(13,51,32,0.13);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Outfit', sans-serif;
+    background: var(--green-deep);
+    min-height: 100vh;
+    overflow-x: hidden;
+    position: relative;
+  }
+
+  /* Animated background */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background:
+      radial-gradient(ellipse 80% 60% at 20% 10%, rgba(61,187,114,0.18) 0%, transparent 60%),
+      radial-gradient(ellipse 60% 80% at 80% 90%, rgba(29,212,176,0.12) 0%, transparent 60%),
+      radial-gradient(ellipse 100% 100% at 50% 50%, #0d3320 0%, #071a0e 100%);
+    z-index: 0;
+  }
+
+  /* Floating leaf shapes */
+  .leaf-bg {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    overflow: hidden;
+    pointer-events: none;
+  }
+  .leaf {
+    position: absolute;
+    border-radius: 50% 10% 50% 10%;
+    opacity: 0.04;
+    animation: floatLeaf 18s ease-in-out infinite;
+  }
+  .leaf:nth-child(1) { width:320px;height:320px;background:var(--green-bright);top:-80px;left:-80px;animation-delay:0s; }
+  .leaf:nth-child(2) { width:200px;height:200px;background:var(--accent-teal);top:30%;right:-60px;animation-delay:-5s; }
+  .leaf:nth-child(3) { width:260px;height:260px;background:var(--green-light);bottom:-60px;left:30%;animation-delay:-10s; }
+  .leaf:nth-child(4) { width:150px;height:150px;background:var(--green-bright);top:60%;left:10%;animation-delay:-3s; }
+
+  @keyframes floatLeaf {
+    0%,100% { transform: translateY(0) rotate(0deg); }
+    33% { transform: translateY(-30px) rotate(8deg); }
+    66% { transform: translateY(20px) rotate(-5deg); }
+  }
+
+  .container {
+    position: relative;
+    z-index: 1;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 24px 48px;
+  }
+
+  /* ===== HEADER / BANNER ===== */
+  .header {
+    padding: 48px 0 32px;
+    display: flex;
+    align-items: center;
+    gap: 32px;
+    border-bottom: 1px solid rgba(61,187,114,0.2);
+    margin-bottom: 40px;
+    animation: fadeDown 0.8s ease both;
+  }
+
+  .header-icon {
+    width: 88px;
+    height: 88px;
+    background: linear-gradient(135deg, var(--green-mid), var(--green-bright));
+    border-radius: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 44px;
+    box-shadow: 0 0 40px rgba(61,187,114,0.4), inset 0 1px 0 rgba(255,255,255,0.2);
+    flex-shrink: 0;
+    animation: pulse-glow 3s ease-in-out infinite;
+  }
+
+  @keyframes pulse-glow {
+    0%,100% { box-shadow: 0 0 40px rgba(61,187,114,0.4), inset 0 1px 0 rgba(255,255,255,0.2); }
+    50% { box-shadow: 0 0 60px rgba(61,187,114,0.7), inset 0 1px 0 rgba(255,255,255,0.2); }
+  }
+
+  .header-text h1 {
+    font-size: clamp(1.6rem, 4vw, 2.6rem);
+    font-weight: 800;
+    color: var(--text-light);
+    letter-spacing: -0.02em;
+    line-height: 1.1;
+  }
+  .header-text h1 span {
+    color: var(--green-bright);
+  }
+  .header-text p {
+    margin-top: 8px;
+    color: var(--green-light);
+    font-size: 0.95rem;
+    font-weight: 400;
+    letter-spacing: 0.02em;
+  }
+
+  .header-right {
+    margin-left: auto;
+    text-align: right;
+    flex-shrink: 0;
+  }
+  .status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(61,187,114,0.15);
+    border: 1px solid rgba(61,187,114,0.3);
+    border-radius: 100px;
+    padding: 8px 18px;
+    color: var(--green-light);
+    font-size: 0.85rem;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+  }
+  .status-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--green-bright);
+    animation: blink 1.5s ease-in-out infinite;
+  }
+  @keyframes blink {
+    0%,100% { opacity: 1; }
+    50% { opacity: 0.3; }
+  }
+  .last-update {
+    color: rgba(255,255,255,0.35);
+    font-size: 0.75rem;
+    margin-top: 6px;
+    font-family: 'Space Mono', monospace;
+  }
+
+  /* ===== SECTION LABEL ===== */
+  .section-label {
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--green-bright);
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .section-label::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: rgba(61,187,114,0.2);
+  }
+
+  /* ===== GAUGE GRID ===== */
+  .gauge-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
+    margin-bottom: 32px;
+  }
+
+  .gauge-card {
+    background: var(--card-bg);
+    border-radius: 24px;
+    padding: 28px 24px 24px;
+    box-shadow: var(--shadow);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    position: relative;
+    overflow: hidden;
+    animation: fadeUp 0.7s ease both;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+  }
+  .gauge-card:hover {
+    transform: translateY(-6px);
+    box-shadow: 0 20px 48px rgba(13,51,32,0.22);
+  }
+  .gauge-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 4px;
+    border-radius: 24px 24px 0 0;
+  }
+  .gauge-card.ph::before { background: linear-gradient(90deg, #3dbb72, #1dd4b0); }
+  .gauge-card.tds::before { background: linear-gradient(90deg, #2d86e0, #3dbb72); }
+  .gauge-card.water::before { background: linear-gradient(90deg, #1dd4b0, #2d86e0); }
+
+  .gauge-card:nth-child(1) { animation-delay: 0.1s; }
+  .gauge-card:nth-child(2) { animation-delay: 0.2s; }
+  .gauge-card:nth-child(3) { animation-delay: 0.3s; }
+
+  .gauge-label {
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-mid);
+    margin-bottom: 16px;
+    align-self: flex-start;
+  }
+
+  /* SVG Gauge */
+  .gauge-wrap {
+    position: relative;
+    width: 160px;
+    height: 100px;
+    margin-bottom: 8px;
+  }
+  .gauge-wrap svg { width: 100%; height: 100%; overflow: visible; }
+
+  .gauge-value {
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    text-align: center;
+  }
+  .gauge-value .val {
+    font-size: 2rem;
+    font-weight: 800;
+    color: var(--text-dark);
+    line-height: 1;
+    font-family: 'Space Mono', monospace;
+  }
+  .gauge-value .unit {
+    font-size: 0.72rem;
+    color: var(--text-mid);
+    font-weight: 500;
+    letter-spacing: 0.05em;
+  }
+
+  .gauge-range {
+    display: flex;
+    justify-content: space-between;
+    width: 100%;
+    font-size: 0.7rem;
+    color: #aaa;
+    font-family: 'Space Mono', monospace;
+    margin-top: 4px;
+  }
+
+  /* ===== STATUS CARDS ===== */
+  .status-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
+    margin-bottom: 32px;
+  }
+
+  .status-card {
+    background: var(--card-bg);
+    border-radius: 20px;
+    padding: 20px 22px;
+    box-shadow: var(--shadow);
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    animation: fadeUp 0.7s ease both;
+    transition: transform 0.3s ease;
+  }
+  .status-card:hover { transform: translateY(-4px); }
+  .status-card:nth-child(1) { animation-delay: 0.3s; }
+  .status-card:nth-child(2) { animation-delay: 0.4s; }
+  .status-card:nth-child(3) { animation-delay: 0.5s; }
+
+  .status-icon {
+    width: 52px; height: 52px;
+    border-radius: 14px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 24px;
+    flex-shrink: 0;
+  }
+  .status-icon.on { background: rgba(61,187,114,0.15); }
+  .status-icon.off { background: rgba(255,95,95,0.1); }
+  .status-icon.idle { background: rgba(200,200,200,0.15); }
+
+  .status-info { flex: 1; min-width: 0; }
+  .status-name {
+    font-size: 0.78rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-mid);
+    margin-bottom: 4px;
+  }
+  .status-state {
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--text-dark);
+  }
+  .status-state.on { color: var(--green-mid); }
+  .status-state.off { color: var(--accent-red); }
+
+  .pump-dot {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    margin-left: auto;
+    flex-shrink: 0;
+  }
+  .pump-dot.on { background: var(--green-bright); animation: blink 1.2s infinite; }
+  .pump-dot.off { background: #ccc; }
+
+  /* ===== CHART ===== */
+  .chart-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
+    margin-bottom: 32px;
+  }
+
+  .chart-card {
+    background: var(--card-bg);
+    border-radius: 20px;
+    padding: 20px 20px 16px;
+    box-shadow: var(--shadow);
+    animation: fadeUp 0.7s ease both;
+  }
+  .chart-card:nth-child(1) { animation-delay: 0.5s; }
+  .chart-card:nth-child(2) { animation-delay: 0.6s; }
+  .chart-card:nth-child(3) { animation-delay: 0.7s; }
+
+  .chart-title {
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--text-mid);
+    margin-bottom: 12px;
+  }
+  .chart-canvas-wrap {
+    height: 90px;
+    position: relative;
+  }
+  canvas { width: 100% !important; height: 100% !important; }
+
+  /* ===== PHOTO SECTION ===== */
+  .photo-section {
+    background: var(--card-bg);
+    border-radius: 24px;
+    padding: 32px;
+    box-shadow: var(--shadow);
+    margin-bottom: 32px;
+    animation: fadeUp 0.7s 0.6s ease both;
+  }
+  .photo-inner {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+    align-items: center;
+  }
+  .photo-text h3 {
+    font-size: 1.3rem;
+    font-weight: 800;
+    color: var(--text-dark);
+    margin-bottom: 10px;
+  }
+  .photo-text p {
+    font-size: 0.9rem;
+    color: var(--text-mid);
+    line-height: 1.7;
+  }
+  .photo-stats {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-top: 16px;
+  }
+  .photo-stat {
+    background: var(--green-mist);
+    border-radius: 12px;
+    padding: 12px 14px;
+  }
+  .photo-stat .ps-label { font-size: 0.7rem; color: var(--text-mid); font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; }
+  .photo-stat .ps-val { font-size: 1rem; font-weight: 800; color: var(--green-dark); font-family: 'Space Mono', monospace; }
+
+  .photo-visual {
+    height: 220px;
+    border-radius: 16px;
+    background: linear-gradient(135deg, #0d3320 0%, #1a5c38 40%, #2d8653 80%, #3dbb72 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 80px;
+    position: relative;
+    overflow: hidden;
+  }
+  .photo-visual::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%233dbb72' fill-opacity='0.08'%3E%3Ccircle cx='30' cy='30' r='20'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+  }
+
+  /* ===== FOOTER ===== */
+  .footer {
+    text-align: center;
+    padding: 24px 0 0;
+    border-top: 1px solid rgba(61,187,114,0.15);
+    color: rgba(255,255,255,0.3);
+    font-size: 0.78rem;
+    letter-spacing: 0.05em;
+  }
+  .footer span { color: var(--green-bright); }
+
+  /* ===== ANIMATIONS ===== */
+  @keyframes fadeDown {
+    from { opacity: 0; transform: translateY(-24px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(24px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* ===== RESPONSIVE ===== */
+  @media (max-width: 768px) {
+    .gauge-grid, .status-grid, .chart-grid { grid-template-columns: 1fr; }
+    .photo-inner { grid-template-columns: 1fr; }
+    .header { flex-wrap: wrap; }
+    .header-right { margin-left: 0; }
+  }
+</style>
+</head>
+<body>
+
+<div class="leaf-bg">
+  <div class="leaf"></div>
+  <div class="leaf"></div>
+  <div class="leaf"></div>
+  <div class="leaf"></div>
+</div>
+
+<div class="container">
+
+  <!-- HEADER BANNER -->
+<header class="header">
+    <div class="header-icon">
+        <img src="C:\Users\Nata\Downloads\high-resolution-color-logo.png" alt="Hidroponik" style="width: 80%; height: 80%; object-fit: cover; border-radius: 24px;">
+    </div>
+    <div class="header-text">
+      <h1>Hidroponik <span>Tower</span> IoT</h1>
+      <p>Sistem Monitoring & Kontrol Otomatis Berbasis Internet of Things · ESP32</p>
+    </div>
+    <div class="header-right">
+      <div class="status-badge">
+        <div class="status-dot" id="statusDot"></div>
+        <span id="statusText">Menghubungkan...</span>
+      </div>
+      <div class="last-update" id="lastUpdate">–</div>
+    </div>
+  </header>
+
+  <!-- SENSOR GAUGES -->
+  <div class="section-label">📡 Pembacaan Sensor Real-Time</div>
+  <div class="gauge-grid">
+
+    <!-- pH Gauge -->
+    <div class="gauge-card ph">
+      <div class="gauge-label">⚗️ Tingkat pH Air</div>
+      <div class="gauge-wrap">
+        <svg viewBox="0 0 160 100">
+          <path d="M 10 90 A 70 70 0 0 1 150 90" fill="none" stroke="#e8f5ee" stroke-width="12" stroke-linecap="round"/>
+          <path id="ph-arc" d="M 10 90 A 70 70 0 0 1 150 90" fill="none" stroke="url(#phGrad)" stroke-width="12" stroke-linecap="round" stroke-dasharray="220" stroke-dashoffset="220"/>
+          <defs>
+            <linearGradient id="phGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" stop-color="#3dbb72"/>
+              <stop offset="100%" stop-color="#1dd4b0"/>
+            </linearGradient>
+          </defs>
+        </svg>
+        <div class="gauge-value">
+          <div class="val" id="ph-val">--</div>
+          <div class="unit">pH</div>
+        </div>
+      </div>
+      <div class="gauge-range"><span>1</span><span>Ideal: 6–7</span><span>14</span></div>
+    </div>
+
+    <!-- TDS Gauge -->
+    <div class="gauge-card tds">
+      <div class="gauge-label">🧪 Nutrisi Terlarut (TDS)</div>
+      <div class="gauge-wrap">
+        <svg viewBox="0 0 160 100">
+          <path d="M 10 90 A 70 70 0 0 1 150 90" fill="none" stroke="#e8f5ee" stroke-width="12" stroke-linecap="round"/>
+          <path id="tds-arc" d="M 10 90 A 70 70 0 0 1 150 90" fill="none" stroke="url(#tdsGrad)" stroke-width="12" stroke-linecap="round" stroke-dasharray="220" stroke-dashoffset="220"/>
+          <defs>
+            <linearGradient id="tdsGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" stop-color="#2d86e0"/>
+              <stop offset="100%" stop-color="#3dbb72"/>
+            </linearGradient>
+          </defs>
+        </svg>
+        <div class="gauge-value">
+          <div class="val" id="tds-val">--</div>
+          <div class="unit">ppm</div>
+        </div>
+      </div>
+      <div class="gauge-range"><span>0</span><span>Ideal: 560–840</span><span>3000</span></div>
+    </div>
+
+    <!-- Water Level Gauge -->
+    <div class="gauge-card water">
+      <div class="gauge-label">💧 Ketinggian Air</div>
+      <div class="gauge-wrap">
+        <svg viewBox="0 0 160 100">
+          <path d="M 10 90 A 70 70 0 0 1 150 90" fill="none" stroke="#e8f5ee" stroke-width="12" stroke-linecap="round"/>
+          <path id="wl-arc" d="M 10 90 A 70 70 0 0 1 150 90" fill="none" stroke="url(#wlGrad)" stroke-width="12" stroke-linecap="round" stroke-dasharray="220" stroke-dashoffset="220"/>
+          <defs>
+            <linearGradient id="wlGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" stop-color="#1dd4b0"/>
+              <stop offset="100%" stop-color="#2d86e0"/>
+            </linearGradient>
+          </defs>
+        </svg>
+        <div class="gauge-value">
+          <div class="val" id="wl-val">--</div>
+          <div class="unit">cm</div>
+        </div>
+      </div>
+      <div class="gauge-range"><span>5 cm</span><span>Cukup: 6–9</span><span>9 cm</span></div>
+    </div>
+
+  </div>
+
+  <!-- PUMP STATUS -->
+  <div class="section-label">⚙️ Status Kontrol Pompa</div>
+  <div class="status-grid">
+
+    <div class="status-card">
+      <div class="status-icon" id="pump-ph-icon">⚗️</div>
+      <div class="status-info">
+        <div class="status-name">Pompa pH</div>
+        <div class="status-state" id="pump-ph-state">Memuat...</div>
+      </div>
+      <div class="pump-dot" id="pump-ph-dot"></div>
+    </div>
+
+    <div class="status-card">
+      <div class="status-icon" id="pump-tds-icon">🧪</div>
+      <div class="status-info">
+        <div class="status-name">Pompa Nutrisi TDS</div>
+        <div class="status-state" id="pump-tds-state">Memuat...</div>
+      </div>
+      <div class="pump-dot" id="pump-tds-dot"></div>
+    </div>
+
+    <div class="status-card">
+      <div class="status-icon" id="pump-air-icon">💧</div>
+      <div class="status-info">
+        <div class="status-name">Pompa Air</div>
+        <div class="status-state" id="pump-air-state">Memuat...</div>
+      </div>
+      <div class="pump-dot" id="pump-air-dot"></div>
+    </div>
+
+  </div>
+
+  <!-- CHARTS -->
+  <div class="section-label">Grafik Riwayat Data</div>
+  <div class="chart-grid">
+    <div class="chart-card">
+      <div class="chart-title">Grafik pH</div>
+      <div class="chart-canvas-wrap"><canvas id="chartPH"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">Grafik TDS (ppm)</div>
+      <div class="chart-canvas-wrap"><canvas id="chartTDS"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">Grafik Level Air (cm)</div>
+      <div class="chart-canvas-wrap"><canvas id="chartWL"></canvas></div>
+    </div>
+  </div>
+
+  <!-- PLANT INFO -->
+  <div class="section-label">🌱 Informasi Tanaman</div>
+  <div class="photo-section">
+    <div class="photo-inner">
+      <div class="photo-text">
+        <h3>🥬 Selada Hidroponik Tower</h3>
+        <p>Sistem hidroponik tower vertikal berbasis IoT dirancang untuk mengoptimalkan budidaya selada dengan pemantauan real-time dan kontrol otomatis parameter nutrisi, pH, dan level air.</p>
+        <div class="photo-stats">
+          <div class="photo-stat">
+            <div class="ps-label">pH Ideal</div>
+            <div class="ps-val">6.0 – 7.0</div>
+          </div>
+          <div class="photo-stat">
+            <div class="ps-label">TDS Ideal</div>
+            <div class="ps-val">560 – 840</div>
+          </div>
+          <div class="photo-stat">
+            <div class="ps-label">Suhu Air</div>
+            <div class="ps-val">18 – 24°C</div>
+          </div>
+          <div class="photo-stat">
+            <div class="ps-label">Panen</div>
+            <div class="ps-val">~30 Hari</div>
+          </div>
+        </div>
+      </div>
+      <div class="photo-visual"><img src="file:///C:/Users/Nata/Downloads/5f4f7d215c175.png" alt="Plant photo" style="width:100%; height:100%; object-fit:cover; border-radius:1px;"></div>
+    </div>
+  </div>
+
+  <div class="footer">
+    Dikembangkan oleh <span>PISCOK LUMER TEAM</span> · HIDROVER · Universitas Prasetiya Mulya · 2026
+  </div>
+
+</div>
+
+<!-- Chart.js -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+
+<script>
+// ============================================================
+// KONFIGURASI BLYNK
+// Ganti dengan kredensial kamu:
+const BLYNK_AUTH_TOKEN = 'AljxRxhopyl6Nuq7NeoLDQlaT7NHrZl1';
+const BLYNK_SERVER = 'https://sgp1.blynk.cloud';
+// V0 = pH, V1 = TDS, V2 = Level Air, V3 = Pompa pH, V4 = Pompa Air, V5 = Pompa TDS
+// ============================================================
+
+// History data untuk grafik
+const history = { ph: [], tds: [], wl: [], labels: [] };
+const MAX_POINTS = 12;
+
+// ===== GAUGE ARC HELPER =====
+function setArc(id, value, min, max) {
+  const arc = document.getElementById(id);
+  if (!arc) return;
+  const pct = Math.min(Math.max((value - min) / (max - min), 0), 1);
+  const total = 220;
+  arc.style.strokeDashoffset = total - (pct * total);
+  arc.style.transition = 'stroke-dashoffset 1s ease';
+}
+
+// ===== UPDATE UI =====
+function updateSensors(ph, tds, wl) {
+  // Values
+  document.getElementById('ph-val').textContent = ph !== null ? ph.toFixed(2) : '--';
+  document.getElementById('tds-val').textContent = tds !== null ? Math.round(tds) : '--';
+  document.getElementById('wl-val').textContent = wl !== null ? wl.toFixed(1) : '--';
+
+  // Arcs
+  if (ph !== null) setArc('ph-arc', ph, 1, 14);
+  if (tds !== null) setArc('tds-arc', tds, 0, 3000);
+  if (wl !== null) setArc('wl-arc', wl, 5, 9);
+
+  // History
+  const now = new Date();
+  const label = now.getHours().toString().padStart(2,'0') + ':' + now.getMinutes().toString().padStart(2,'0') + ':' + now.getSeconds().toString().padStart(2,'0');
+  if (ph !== null) history.ph.push(ph);
+  if (tds !== null) history.tds.push(tds);
+  if (wl !== null) history.wl.push(wl);
+  history.labels.push(label);
+  if (history.labels.length > MAX_POINTS) {
+    history.ph.shift(); history.tds.shift(); history.wl.shift(); history.labels.shift();
+  }
+  updateCharts();
+
+  // Last update
+  document.getElementById('lastUpdate').textContent = 'Update: ' + label;
+}
+
+function updatePumps(pumpPH, pumpTDS, pumpAir) {
+  function applyPump(stateId, iconId, dotId, value) {
+    const el = document.getElementById(stateId);
+    const dot = document.getElementById(dotId);
+    const icon = document.getElementById(iconId);
+    if (!el || !value) return;
+    const isOn = value.toLowerCase().includes('hidup') || value.toLowerCase().includes('on');
+    const isOff = value.toLowerCase().includes('mati') || value.toLowerCase().includes('off');
+    el.textContent = value;
+    el.className = 'status-state ' + (isOn ? 'on' : isOff ? 'off' : '');
+    dot.className = 'pump-dot ' + (isOn ? 'on' : 'off');
+    icon.className = 'status-icon ' + (isOn ? 'on' : isOff ? 'off' : 'idle');
+  }
+  applyPump('pump-ph-state', 'pump-ph-icon', 'pump-ph-dot', pumpPH);
+  applyPump('pump-tds-state', 'pump-tds-icon', 'pump-tds-dot', pumpTDS);
+  applyPump('pump-air-state', 'pump-air-icon', 'pump-air-dot', pumpAir);
+}
+
+function setOnline(online) {
+  const dot = document.getElementById('statusDot');
+  const text = document.getElementById('statusText');
+  dot.style.background = online ? '#3dbb72' : '#ff5f5f';
+  text.textContent = online ? 'SISTEM ONLINE' : 'OFFLINE';
+}
+
+// ===== CHARTS =====
+function makeChart(id, label, color) {
+  const ctx = document.getElementById(id).getContext('2d');
+  return new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: [],
+      datasets: [{
+        label,
+        data: [],
+        borderColor: color,
+        backgroundColor: color + '22',
+        borderWidth: 2,
+        pointRadius: 3,
+        pointBackgroundColor: color,
+        tension: 0.4,
+        fill: true,
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      animation: { duration: 600 },
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { display: false },
+        y: {
+          display: true,
+          grid: { color: 'rgba(0,0,0,0.05)' },
+          ticks: { font: { size: 9 }, maxTicksLimit: 4 }
+        }
+      }
+    }
+  });
+}
+
+const chartPH  = makeChart('chartPH',  'pH',       '#3dbb72');
+const chartTDS = makeChart('chartTDS', 'TDS (ppm)','#2d86e0');
+const chartWL  = makeChart('chartWL',  'Level Air','#1dd4b0');
+
+function updateCharts() {
+  [chartPH, chartTDS, chartWL].forEach((c, i) => {
+    const key = ['ph','tds','wl'][i];
+    c.data.labels = [...history.labels];
+    c.data.datasets[0].data = [...history[key]];
+    c.update('none');
+  });
+}
+
+// ===== BLYNK FETCH =====
+async function fetchPin(pin) {
+  try {
+    const res = await fetch(`${BLYNK_SERVER}/external/api/get?token=${BLYNK_AUTH_TOKEN}&${pin}`);
+    if (!res.ok) return null;
+    const text = await res.text();
+    return text.trim();
+  } catch { return null; }
+}
+
+async function fetchAllData() {
+  if (BLYNK_AUTH_TOKEN === 'AljxRxhopyl6Nuq7NeoLDQlaT7NHrZl1') {
+    const ph  = 6.2 + Math.random() * 0.8;
+    const tds = 680 + Math.random() * 120;
+    const wl  = 6  + Math.random() * 2;
+    updateSensors(ph, tds, wl);
+    updatePumps(
+      ph < 6 ? 'Pompa pH Hidup' : ph > 7 ? 'Pompa pH Mati' : 'pH Stabil',
+      tds < 1050 ? 'Pompa TDS ON' : tds > 1400 ? 'Pompa TDS OFF' : 'Nutrisi Stabil',
+      wl < 6 ? 'Pompa WL Hidup' : wl > 9 ? 'Pompa WL Mati' : 'Cukup Air'
+    );
+    setOnline(true);
+    return;
+  }
+
+  try {
+    const [v0,v1,v2,v3,v4,v5] = await Promise.all([
+      fetchPin('v0'), fetchPin('v1'), fetchPin('v2'),
+      fetchPin('v3'), fetchPin('v4'), fetchPin('v5')
+    ]);
+    updateSensors(
+      v0 !== null ? parseFloat(v0) : null,
+      v1 !== null ? parseFloat(v1) : null,
+      v2 !== null ? parseFloat(v2) : null
+    );
+    updatePumps(v3, v5, v4);
+    setOnline(true);
+  } catch {
+    setOnline(false);
+  }
+}
+
+// ===== INIT =====
+fetchAllData();
+setInterval(fetchAllData, 3000);
+</script>
+</body>
+</html>
